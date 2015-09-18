@@ -1,0 +1,275 @@
+<!DOCTYPE html><!--Yoichiro Urita '15/9/18-->
+<html lang="ja">
+<head>
+<meta charset="">
+<titile>Tensor converter</title>
+
+</head>
+
+<body>
+<!--<a href=""></a>-->
+<section>
+<h1>Convert a symmetric tensor to principal values & principal vectors.<br>
+対称テンソルから主値・主軸への変換<h>
+</section>
+<p>Input a tensor by numeric number./
+テンソルを数字で入力してください。
+</p>
+
+<form name="tensor_value">
+Axx:<input type="text" name="axx" value="5" onblur="input_value(0,0,0)"><br>
+Ayx:<input type="text" name="axy" value="1" onblur="input_value(1,0,1)">
+Ayy:<input type="text" name="ayy" value="6" onblur="input_value(2,1,1)"><br>
+Azx:<input type="text" name="axz" value="-2" onblur="input_value(3,0,2)">
+Azy:<input type="text" name="ayz" value="-1" onblur="input_value(4,1,2)">
+Azz:<input type="text" name="azz" value="5" onblur="input_value(5,2,2)"><br>
+<input type="button"value="convert" onclick="eigen()"><!--need change-->
+</form>
+
+<!--var dom=document.getElementById("DocID");
+var str="Converter";
+dom.innerHTML=str;-->
+
+<br>
+Principal Values (P.V.)/主値<br>
+<table border="1" width="500" cellspacing="0" cellpadding="5" bordercolor="#333333" id="table_1">
+<tr>
+<th bgcolor="#EE0000"><font color="#FFFFFF" width="100">P.V.No.1</font></th>
+<th bgcolor="#EE0000"><font color="#FFFFFF" width="100">P.V.No.2</font></th>
+<th bgcolor="#EE0000"><font color="#FFFFFF" width="100">P.V.No.3</font></th>
+</tr>
+<tr>
+<td bgcolor="#FFFFFF" align="right">0</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+</tr>
+</table>
+
+<br>
+Principal Vectors (P.Vec.)/主軸<br>
+<table border="1" width="500" cellspacing="0" cellpadding="5" bordercolor="#333333" id="table_2">
+<tr>
+<th bgcolor="#FFFFFF"><font color="#FFFFFF" ></font></th>
+<th bgcolor="#0000DD"><font color="#FFFFFF" width="100">P.Vec.No.1</font></th>
+<th bgcolor="#0000DD"><font color="#FFFFFF" width="100">P.Vec.No.2</font></th>
+<th bgcolor="#0000DD"><font color="#FFFFFF" width="100">P.Vec.No.3</font></th>
+</tr>
+<tr>
+<td bgcolor="#FFFFFF" >X</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+</tr>
+<tr>
+<td bgcolor="#FFFFFF" >Y</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+</tr>
+<tr>
+<td bgcolor="#FFFFFF" >Z</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+<td bgcolor="#FFFFFF" align="right">0</td>
+</tr>
+</table>
+
+Usage:Convert from stress tensor to principal stresses and principal vectors, from inertia tensor to principal inertia and princpal axis of inertia etc..<br>
+用途：応力テンソルから主応力と主軸、慣性テンソルから主慣性モーメントと慣性主軸などを変換する。<br>
+<img src="tensor_examples.png">
+<br>Notice: Non-diagonal elements of inertia tensor include minus sign.<br>
+<script>
+
+var Aij=new Array();
+var Aii=new Array();
+var Vec=new Array();
+for(var i=0;i<3;i++)
+{
+	Aij[i]=new Array();
+	Vec[i]=new Array();
+}
+for(var i=0;i<3;i++)
+{
+	for(var j=0;j<3;j++)
+	{
+		Aij[i][j]=0;
+		Vec[i][j]=0;
+	}
+	Aii[i]=0;
+}
+var table__1=document.getElementById('table_1');
+var collection__1=table__1.rows;
+
+var tr__PV=collection__1.item(1);
+var td__PV=tr__PV.cells;
+
+var table__2=document.getElementById('table_2');
+var collection__2=table__2.rows;
+
+function input_value(k,i,j)
+{
+	try
+	{
+		Aij[i][j]=parseFloat(document.tensor_value.elements[k].value);
+		if(typeof(Aij[i][j])!="number")
+		{
+			alert("**Input numeric number! "+Aij[i][j]);
+		}
+
+	}
+	catch(e)
+	{
+		alert("Input numeric number!");
+	}
+
+}
+
+
+function eigen()
+{
+	//9/16/2015
+	///Eigen value with Jacobian (Givens rotation)
+
+	var eps=10e-16;//define acceptable error
+	var kmax=5000;//maximum iteration number
+	var b1,b2,b3,i_rot,j_rot;
+	var v_tan,v_cos,v_sin;
+	//make mat A
+	try
+	{
+		Aij[0][0]=parseFloat(document.tensor_value.elements[0].value);
+		Aij[0][1]=parseFloat(document.tensor_value.elements[1].value);
+		Aij[1][0]=Aij[0][1];
+		Aij[1][1]=parseFloat(document.tensor_value.elements[2].value);
+		Aij[0][2]=parseFloat(document.tensor_value.elements[3].value);
+		Aij[2][0]=Aij[0][2];
+		Aij[1][2]=parseFloat(document.tensor_value.elements[4].value);
+		Aij[2][1]=Aij[1][2];
+		Aij[2][2]=parseFloat(document.tensor_value.elements[5].value);
+	}
+	catch(e)
+	{
+		alert("Input numeric number!");
+		return;
+	}
+	//vec=unit matrix
+	for(var i=0;i<3;i++)
+	{
+		for(var j=0;j<3;j++)
+		{
+			if(i==j)
+			{
+				Vec[i][j]=1.;
+			}
+			else
+			{
+				Vec[i][j]=0.;
+			}
+		}
+		Aii[i]=0;
+	}
+	for (var k_iter = 0; k_iter < kmax;k_iter++)
+	{
+		var k_new = 0;//flag:if nondiagonal elementhas unacceptable error,flag was 1
+		var ax = 0.;
+		//looking for maximum element and replace ax
+		for (var i = 0; i <3; i++)
+		{
+			for (var j = i + 1; j <3; j++)
+			{
+				b1 = Math.abs(Aij[i][j]);
+				if (b1>ax)
+				{
+					i_rot = i;
+					j_rot = j;
+					ax = b1;
+				}
+			}
+		}
+		if (ax > eps)
+		{
+			k_new = 1;
+
+
+			//calculate cosine and sine
+			b1 = Aij[i_rot][i_rot] - Aij[j_rot][j_rot];
+			b2 = -b1 - Math.sqrt(b1*b1 + 4 * ax*ax);
+			b3 = 2 * Aij[i_rot][j_rot];
+			v_tan = b2 / b3;
+			v_cos = 1 / Math.sqrt(1 + v_tan*v_tan);
+			v_sin = v_cos*v_tan;
+
+			//rotate vec
+			for (var i = 0; i <3; i++)
+			{
+				b1 = Vec[i][i_rot];
+				Vec[i][i_rot] = v_cos*b1 + v_sin*Vec[i][j_rot];
+				Vec[i][j_rot] = v_cos*Vec[i][j_rot] - v_sin*b1;
+			}
+
+			//rotate A matrix
+			for (var i = 0; i < i_rot; i++)
+			{
+				b1 = Aij[i][i_rot];
+				Aij[i][i_rot] = v_cos*b1 + v_sin*Aij[i][j_rot];
+				Aij[i][j_rot] = v_cos*Aij[i][j_rot] - v_sin*b1;
+			}
+			for (var i = i_rot + 1; i < j_rot; i++)
+			{
+				b1 = Aij[i_rot][i];
+				Aij[i_rot][i] = v_cos*b1 + v_sin*Aij[i][j_rot];
+				Aij[i][j_rot] = v_cos*Aij[i][j_rot] - v_sin*b1;
+			}
+			for (var i = j_rot + 1; i <3; i++)
+			{
+				b1 = Aij[i_rot][i];
+				Aij[i_rot][i] = v_cos*b1 + v_sin*Aij[j_rot][i];
+				Aij[j_rot][i] = v_cos*Aij[j_rot][i] - v_sin*b1;
+			}
+
+			//erase nondiagonal element
+			b1 = Aij[i_rot][i_rot];
+			b2 = 2 * v_cos*v_sin*Aij[i_rot][j_rot];
+			b3 = v_cos*v_cos*b1 + b2;
+
+			Aij[i_rot][i_rot] = b3 + v_sin*v_sin*Aij[j_rot][j_rot];
+			b3 = v_cos*v_cos*Aij[j_rot][j_rot] + v_sin*v_sin*b1;
+			Aij[j_rot][j_rot] = b3 - b2;
+			Aij[i_rot][j_rot] = 0;
+			Aij[j_rot][i_rot] = Aij[i_rot][j_rot];
+
+		}
+		if (k_new == 0)
+		{
+			break;
+		}
+	}
+
+	//eig <- diagonal elements
+	for (var i = 0; i < 3; i++)
+	{
+		Aii[i] = Aij[i][i];
+	}
+	
+	//overwrite table 1
+	for(var i=0;i<3;i++)
+	{
+		td__PV.item(i).firstChild.nodeValue=Aii[i];
+	}
+
+	//overwrite table 2
+	for(var i=0;i<3;i++)
+	{
+		for(var j=0;j<3;j++)
+		{
+			collection__2.item(i+1).cells.item(j+1).firstChild.nodeValue=Vec[i][j];
+		}
+	}
+
+}
+
+</script>
+
+</body>
+
+</html>
